@@ -1,7 +1,7 @@
 import { formatState, type TileEnv } from '#/tiles/actions.ts'
 import { formatNumber } from '#/tiles/features/parts.tsx'
 import type { TileConfig } from '#/tiles/host.tsx'
-import { linePaths, useHistory, useStatistics, useTimeline, type Span } from '#/tiles/history.ts'
+import { linePaths, numericState, useHistory, useStatistics, useTimeline, type Span } from '#/tiles/history.ts'
 import { Panel } from '#/tiles/Panel.tsx'
 import type { EntityState, HomeAssistant } from '#/types.ts'
 import { useId } from 'react'
@@ -22,7 +22,11 @@ const HEIGHT = 96
 const ON = ['on', 'open', 'home', 'playing', 'unlocked', 'detected', 'active', 'heat', 'cool']
 
 export const isNumeric = (entity: EntityState | undefined) =>
-  !!entity && entity.state !== '' && Number.isFinite(Number(entity.state))
+  !!entity &&
+  (numericState(entity.state) !== null ||
+    ['number', 'input_number', 'counter'].includes(entity.entity_id.split('.')[0]) ||
+    typeof entity.attributes.unit_of_measurement === 'string' ||
+    typeof entity.attributes.state_class === 'string')
 
 // How a reading's days add up: one that keeps counting, like energy, by
 // how much it grew each day, and any other by its average.
