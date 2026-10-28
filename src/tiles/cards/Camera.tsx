@@ -19,7 +19,7 @@ declare global {
 
 // Home Assistant's picture element is only loaded once a card that needs it
 // is. Building a picture entity card that is never shown loads it.
-function useImageElement() {
+export function useImageElement() {
   const [ready, setReady] = useState(() => customElements.get('hui-image') !== undefined)
   useEffect(() => {
     if (ready) return

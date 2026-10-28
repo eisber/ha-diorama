@@ -13,6 +13,11 @@ moves that section under the new version and uses it as the release notes.
 
 - A piano in three styles, a desk lamp in two, three more ceiling lights, and a switch to hang the sideboard on the wall at any height.
 - Plants, vases, books and other small pieces can stand on a wall shelf, and a plant can stand in for its sensors or Home Assistant plant, wilting and yellowing when its soil runs dry.
+- Optional read-only interaction keeps observations and navigation available without sending device commands.
+- Local Scaniverse references can be aligned privately over the card and the editor's 3D preview.
+- Surface-anchored review conversations and guided physical measurements keep feedback beside the model without changing its dimensions.
+- Read-only inspections can show related histories, verified host observations, live camera images and a recording timeline.
+- Sensor-only observation bindings can illustrate an estimated opening, and walls can be drawn at full room height.
 
 ### Changed
 
@@ -21,6 +26,7 @@ moves that section under the new version and uses it as the release notes.
 ### Fixed
 
 - On older Home Assistant versions the editor responds to clicks again, where it opened but nothing in it could be clicked, and on 2024.6 the side panel shows its widgets again.
+- Numeric charts leave gaps for unavailable or blank readings instead of drawing across outages or inventing zeroes.
 
 ## [1.8.29] - 2026-10-21
 

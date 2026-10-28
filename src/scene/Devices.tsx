@@ -24,6 +24,7 @@ import type { CardConfig, DeviceConfig, HomeAssistant } from '#/types.ts'
 import { useThree } from '@react-three/fiber'
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { Color, MathUtils, SRGBColorSpace, Vector3 } from 'three'
+import { observedLevel } from '#/observation.ts'
 
 type Props = {
   hass: HomeAssistant | null
@@ -107,6 +108,7 @@ function itemState(
   const signals = deviceSignals(hass, entityId)
   if (signals.length === 0) return null
   const v = signalValues(hass, entityId)
+  const observation = device.observation ? observedLevel(hass.states[entityId]?.state, device.observation) : null
   // A guess stands until the device agrees with it, or its timer ends it.
   if (guesses.get(entityId) === v.on) guesses.delete(entityId)
   const on = guesses.get(entityId) ?? v.on ?? false
@@ -143,11 +145,11 @@ function itemState(
     if (value !== undefined) levels[id] = value
   }
   return {
-    on,
+    on: device.observation ? observation !== null && observation > 0 : on,
     // Missing, not one, when the device has no percentage: a device that
     // only switches must not read as fully open.
-    level: signals.includes('level') ? levels.open : undefined,
-    levels,
+    level: device.observation ? (observation ?? undefined) : signals.includes('level') ? levels.open : undefined,
+    levels: device.observation ? (observation === null ? {} : { open: observation }) : levels,
     glow,
     value: v.value,
     moisture: v.moisture,

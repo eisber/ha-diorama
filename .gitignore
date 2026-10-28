@@ -25,3 +25,20 @@ dist-ssr
 
 # The card config of the author's own home, kept here to update by hand.
 home.yaml
+
+# Local house data and credentials are never part of the public fork.
+.private/
+.local-data/
+.env
+.env.*
+!.env.example
+secrets.yaml
+secrets/
+*.glb
+*.gltf
+*.ply
+*.usdz
+*.pem
+*.key
+*.p12
+*.sqlite*

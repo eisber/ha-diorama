@@ -2,6 +2,12 @@
 
 # Diorama
 
+This upstream-tracking fork adds optional private local scan references,
+anchored review conversations, guided physical measurements and read-only
+monitoring workflows. See [scan-assisted review](docs/SCAN-REVIEW.md) and
+[fork maintenance and contribution boundaries](docs/FORK.md). Existing
+configurations retain upstream behavior.
+
 A Home Assistant card that turns your home into a small 3D model you can click.
 
 ## The diorama

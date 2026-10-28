@@ -1,3 +1,6 @@
+import type { ReviewConfig } from './review/types.ts'
+import type { InspectionConfig } from './inspect/data.ts'
+
 export type EntityState = {
   entity_id: string
   state: string
@@ -140,6 +143,7 @@ export type DeviceConfig = {
   // Which of the device's percentages feeds each percentage of the items it
   // stands behind, for example its tilt driving a blind's slats.
   levels?: Record<string, string>
+  observation?: { min: number; max: number; invert?: boolean }
   // Decoration items that stand in for this device in 3D.
   decorations?: string[]
 }
@@ -169,6 +173,9 @@ export type DecorationConfig = {
 
 export type CardConfig = {
   type: string
+  review?: ReviewConfig
+  scan_reference?: { id: string }
+  inspections?: Record<string, InspectionConfig>
   rooms?: RoomConfig[]
   devices?: DeviceConfig[]
   decorations?: DecorationConfig[]

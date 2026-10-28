@@ -26,7 +26,7 @@ import type { CardConfig, HomeAssistant } from '#/types.ts'
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { MathUtils, PCFShadowMap } from 'three'
-import { useCallback, useRef, useState, type RefObject } from 'react'
+import { useCallback, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 export type { CameraHandle } from '#/scene/CameraRig.tsx'
 
@@ -69,6 +69,7 @@ type Props = {
   roomFirst?: (room: string, ask?: boolean) => boolean
   // Filled with when each frame is drawn, for counting them.
   fpsTicks?: FpsTicks
+  layers?: ReactNode
 }
 
 export default function Scene({
@@ -88,6 +89,7 @@ export default function Scene({
   focus,
   roomFirst,
   fpsTicks,
+  layers,
 }: Props) {
   const rooms = config.rooms ?? []
   const radius = config.radius ?? ROOM_CORNER_RADIUS_M
@@ -183,6 +185,7 @@ export default function Scene({
         {rooms.map((room, i) => (
           <Room key={room.id} room={room} rooms={rooms} index={i} radius={radius} gap={gap} />
         ))}
+        {layers}
         {frame && (
           <OrbitControls
             makeDefault

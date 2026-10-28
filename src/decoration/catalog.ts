@@ -1710,9 +1710,11 @@ export const DECORATION_KINDS: DecorationKind[] = [
     'decor',
     'Half wall',
     'floor',
-    [width(2, 0.4, 8), depth(0.2, 0.1, 0.4), height(1, 0.4, 1.6)],
+    [width(2, 0.4, 8), depth(0.2, 0.1, 0.4), height(1, 0.4, 4)],
     { wall: SCANDI.offWhite },
     { wall: 'matte' },
+    undefined,
+    [{ id: 'half_height', label: 'Half height' }, { id: 'full_height', label: 'Full height', params: { height: 2.6 } }],
   ),
   kind(
     'rug',

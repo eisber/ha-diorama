@@ -14,6 +14,13 @@ import { FpsBadge, type FpsTicks } from '#/scene/FpsMeter.tsx'
 import Scene, { type CameraHandle } from '#/scene/Scene.tsx'
 import type { CameraView, CardConfig, HomeAssistant } from '#/types.ts'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useReview } from '#/review/useReview.ts'
+import ReviewToolbar from '#/review/ReviewToolbar.tsx'
+import ReviewLayer from '#/review/ReviewLayer.tsx'
+import { useLocalScan } from '#/scan/useLocalScan.ts'
+import ScanReference from '#/scan/ScanReference.tsx'
+import ScanPanel from '#/scan/ScanPanel.tsx'
+import InspectionPanel from '#/inspect/InspectionPanel.tsx'
 
 type Props = {
   hass: HomeAssistant | null
@@ -34,6 +41,26 @@ const sameView = (a: CameraView, b: CameraView) =>
   a.target.every((v, i) => Math.abs(v - b.target[i]) <= VIEW_TOLERANCE_M)
 
 export default function Card({ hass, config, panel = false, preview = false }: Props) {
+  const review = useReview(hass, config.review, config.rooms ?? [])
+  const scanKey = config.review ? `${config.review.id}:${config.review.frame}` : config.scan_reference?.id
+  const scan = useLocalScan(scanKey)
+  const reviewing = review.enabled && review.mode !== 'inspect'
+  const viewFrame = useRef<HTMLDivElement>(null)
+  const [inspecting, setInspecting] = useState<string | null>(null)
+  useEffect(() => {
+    const inspect = (event: Event) => {
+      if (!(event instanceof CustomEvent) || typeof event.detail?.entityId !== 'string') return
+      const id: string = event.detail.entityId
+      const belongs =
+        config.devices?.some(d => d.entity_id === id) ||
+        config.home?.entities?.includes(id) ||
+        config.rooms?.some(r => r.entities?.includes(id)) ||
+        config.inspections?.[id]
+      if (event.composedPath().includes(viewFrame.current!) || belongs) setInspecting(id)
+    }
+    window.addEventListener('diorama-inspect', inspect)
+    return () => window.removeEventListener('diorama-inspect', inspect)
+  }, [config])
   const hasRooms = (config.rooms?.length ?? 0) > 0
   // Hidden under the fullscreen editor, so it holds its last frame.
   const paused = useEditorOpen()
@@ -158,6 +185,7 @@ export default function Card({ hass, config, panel = false, preview = false }: P
         in a narrow column on a wide screen is as narrow as one on a phone. */}
       <div className={cn('@container w-full', fill && 'h-full')}>
         <div
+          ref={viewFrame}
           className={cn(
             'relative w-full overflow-hidden',
             fill ? 'h-full' : 'aspect-(--aspect) @max-[600px]:aspect-(--aspect-narrow)',
@@ -174,11 +202,13 @@ export default function Card({ hass, config, panel = false, preview = false }: P
               <div className="absolute inset-0" style={{ mask: EDGE_FADE_MASK, WebkitMask: EDGE_FADE_MASK }}>
                 <Scene
                   hass={hass}
-                  config={config}
+                  config={reviewing ? { ...config, read_only: true } : config}
                   paused={paused}
                   cameraRef={camera}
-                  onPickRoom={showRoom}
-                  onPickNothing={showHome}
+                  onPickRoom={reviewing ? undefined : showRoom}
+                  onPickNothing={reviewing ? undefined : showHome}
+                  onPickDecoration={review.mode === 'comment' ? () => {} : undefined}
+                  onTry={reviewing ? () => {} : undefined}
                   onCameraAway={value => {
                     setAway(value)
                     if (!value) setFocus(null)
@@ -187,8 +217,22 @@ export default function Card({ hass, config, panel = false, preview = false }: P
                   roomFirst={roomFirst}
                   wheelZoom={panel}
                   fpsTicks={fps ? fpsTicks : undefined}
+                  layers={
+                    <>
+                      <ScanReference scan={scan} />
+                      {review.enabled && <ReviewLayer review={review} />}
+                    </>
+                  }
                 />
               </div>
+              <ReviewToolbar review={review} />
+              {scanKey && <ScanPanel scan={scan} />}
+              <InspectionPanel
+                hass={hass}
+                entity={inspecting}
+                config={inspecting ? config.inspections?.[inspecting] : undefined}
+                close={() => setInspecting(null)}
+              />
               {fps && <FpsBadge ticks={fpsTicks} />}
               {/* With a room in view, an arrow in the corner takes it back to
                 the whole home, for a phone with no back button of its own. Just

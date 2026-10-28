@@ -42,6 +42,9 @@ import {
 } from '#/constants.ts'
 import type { CardConfig, DecorationConfig, DeviceConfig, HomeAssistant, Point, RoomConfig } from '#/types.ts'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocalScan } from '#/scan/useLocalScan.ts'
+import ScanReference from '#/scan/ScanReference.tsx'
+import ScanPanel from '#/scan/ScanPanel.tsx'
 
 import { EDITOR_TEXT_COMMIT_DELAY_MS } from '#/constants.ts'
 
@@ -61,6 +64,8 @@ function nextRoomId(rooms: RoomConfig[]) {
 }
 
 export default function Editor({ hass, config, onChange, onSave }: Props) {
+  const scanKey = config.review ? `${config.review.id}:${config.review.frame}` : config.scan_reference?.id
+  const scan = useLocalScan(scanKey)
   const [rooms, setRooms] = useState<RoomConfig[]>(config.rooms ?? [])
   const [devices, setDevices] = useState<DeviceConfig[]>(config.devices ?? [])
   const [decorations, setDecorations] = useState<DecorationConfig[]>(config.decorations ?? [])
@@ -1043,7 +1048,9 @@ export default function Editor({ hass, config, onChange, onSave }: Props) {
                         setSelection({ roomId: null, vertex: null })
                         setSelectedDecoration(null)
                       }}
+                      layers={<ScanReference scan={scan} />}
                     />
+                    {scanKey && <ScanPanel scan={scan} />}
                   </div>
                 </>
               )}

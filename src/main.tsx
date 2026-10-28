@@ -141,6 +141,15 @@ function renameTiles(tiles: TileChoices): TileChoices {
 }
 
 function validate(config: CardConfig) {
+  if (config.read_only !== undefined && typeof config.read_only !== 'boolean')
+    throw new Error('read_only must be a boolean')
+  if (
+    config.review &&
+    (!config.review.id || !config.review.frame || !/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(config.review.storage))
+  )
+    throw new Error('review needs an ID, frame and dedicated hyphenated storage path')
+  if (config.scan_reference && (typeof config.scan_reference.id !== 'string' || !config.scan_reference.id.trim()))
+    throw new Error('scan_reference needs a stable local cache ID')
   if (config.rooms !== undefined && !Array.isArray(config.rooms)) throw new Error('rooms must be a list')
   for (const room of config.rooms ?? []) {
     if (!room.id) throw new Error('Every room needs an id')
@@ -152,6 +161,14 @@ function validate(config: CardConfig) {
     if (!device.entity_id) throw new Error('Every device needs an entity_id')
     if (!Array.isArray(device.position) || device.position.length !== 2)
       throw new Error(`Device ${device.entity_id} needs a position`)
+    if (
+      device.observation &&
+      (!device.entity_id.startsWith('sensor.') ||
+        !Number.isFinite(device.observation.min) ||
+        !Number.isFinite(device.observation.max) ||
+        device.observation.max <= device.observation.min)
+    )
+      throw new Error('Observation bindings need a sensor entity and finite increasing range, never an actuator')
   }
   if (config.decorations !== undefined && !Array.isArray(config.decorations))
     throw new Error('decorations must be a list')
