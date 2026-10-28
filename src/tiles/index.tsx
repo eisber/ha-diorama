@@ -22,6 +22,7 @@ import Remote, { keysOf, type RemoteConfig } from '#/tiles/cards/Remote.tsx'
 import Todo from '#/tiles/cards/Todo.tsx'
 import Weather, { type WeatherConfig } from '#/tiles/cards/Weather.tsx'
 import { FEATURES, featuresFor, isWide } from '#/tiles/features/index.tsx'
+import { isReadOnly } from '#/lib/readOnly.ts'
 import { MEDIA } from '#/tiles/features/media.tsx'
 import { supports } from '#/tiles/features/parts.tsx'
 import type { HomeAssistant } from '#/types.ts'
@@ -87,7 +88,9 @@ function entityCard<C extends TileConfig>(
     protected view() {
       if (!this._hass) return null
       const env = { hass: this._hass, host: this, entityId: this._config!.entity }
-      return <View env={env} config={this._config!} />
+      // Discard pending sliders, confirmations and optimistic tile state
+      // when the policy changes, rather than replaying them in live mode.
+      return <View key={String(isReadOnly(this._hass))} env={env} config={this._config!} />
     }
   }
 }

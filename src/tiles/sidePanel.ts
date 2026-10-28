@@ -3,6 +3,7 @@ import { closest, closestClass, inPanelView } from '#/lib/panelView.ts'
 import { onRoomFilter, roomFilter } from '#/lib/roomFilter.ts'
 import { thisScreen } from '#/lib/screen.ts'
 import { autoGroups } from '#/tiles/auto.ts'
+import { CONTROL_EVENTS, guardServices, inspectEntity, isReadOnly } from '#/lib/readOnly.ts'
 import type { CardConfig as PlanConfig, HomeAssistant } from '#/types.ts'
 
 type CardConfig = {
@@ -218,6 +219,7 @@ export class SidePanel extends HTMLElement {
   private sideSlot: HTMLDivElement
   private cardsSlot: HTMLDivElement
   private empty: HTMLDivElement
+  private readOnlyNotice: HTMLDivElement
   private observer: ResizeObserver
   private unsubscribe: (() => void) | null = null
   private panel = false
@@ -248,7 +250,33 @@ export class SidePanel extends HTMLElement {
     this.empty = document.createElement('div')
     this.empty.className = 'empty'
     this.empty.textContent = 'Nothing to control here'
-    side.appendChild(this.cardsSlot)
+    this.readOnlyNotice = document.createElement('div')
+    this.readOnlyNotice.textContent = 'Read only. Device controls are disabled.'
+    this.readOnlyNotice.style.cssText = 'font: 12px sans-serif; padding: 8px 12px; opacity: .8'
+    this.readOnlyNotice.hidden = true
+    side.append(this.readOnlyNotice, this.cardsSlot)
+    for (const type of CONTROL_EVENTS) {
+      this.cardsSlot.addEventListener(
+        type,
+        event => {
+          if (!this.dioramaReadOnly) return
+          if (event.type.startsWith('key') && ['Tab', 'Escape'].includes((event as KeyboardEvent).key)) return
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          if (
+            event.type === 'click' ||
+            event.type === 'hass-more-info' ||
+            (event.type === 'keydown' && (event as KeyboardEvent).key === 'Enter')
+          ) {
+            const card = event.composedPath().find(element => this.side.includes(element as HuiCard)) as
+              HuiCard | undefined
+            const entity = (event as CustomEvent<{ entityId?: string }>).detail?.entityId ?? card?.dataset.entity
+            inspectEntity(this, typeof entity === 'string' ? entity : undefined)
+          }
+        },
+        { capture: true },
+      )
+    }
     this.root.append(this.mainSlot, side)
     shadow.appendChild(this.root)
     // Caught on the way down, before a hui-card can stop it.
@@ -262,6 +290,9 @@ export class SidePanel extends HTMLElement {
   setConfig(config: PlanConfig) {
     if (config === this._config) return
     this._config = config
+    this.updateReadOnly()
+    // Revoke services on existing tiles before the asynchronous rebuild.
+    if (this._hass) for (const card of this.side) card.hass = this.tileHass(this._hass)
     // Over the tiles, the diorama takes the card's shape on a phone.
     this.root.style.setProperty('--_stacked-aspect', aspectRatioCss(config.aspect_ratio_mobile, '1 / 1'))
     // This screen's own share for the diorama, beside the tiles and over them.
@@ -276,11 +307,25 @@ export class SidePanel extends HTMLElement {
 
   set hass(hass: HomeAssistant) {
     this._hass = hass
-    for (const card of this.cards()) card.hass = hass
+    this.updateReadOnly()
+    if (this.main) this.main.hass = hass
+    for (const card of this.side) card.hass = this.tileHass(hass)
   }
 
   get hass() {
     return this._hass as HomeAssistant
+  }
+
+  private get dioramaReadOnly() {
+    return this._config?.read_only === true || isReadOnly(this._hass)
+  }
+
+  private updateReadOnly() {
+    const readOnly = this.dioramaReadOnly
+    this.readOnlyNotice.hidden = !readOnly
+    this.cardsSlot.toggleAttribute('data-read-only', readOnly)
+    if (readOnly) this.cardsSlot.setAttribute('aria-disabled', 'true')
+    else this.cardsSlot.removeAttribute('aria-disabled')
   }
 
   set preview(preview: boolean) {
@@ -312,6 +357,10 @@ export class SidePanel extends HTMLElement {
     window.removeEventListener('resize', this.onResize)
     this.unsubscribe?.()
     this.unsubscribe = null
+  }
+
+  private tileHass(hass: HomeAssistant) {
+    return guardServices(hass, () => this._config?.read_only === true)
   }
 
   private cards() {
@@ -350,7 +399,7 @@ export class SidePanel extends HTMLElement {
     // Each card knows its room, so only the room in view shows.
     const children = autoGroups(config).flatMap(group => group.cards.map(card => ({ card, room: group.room })))
     this.side = children.map(({ card: child, room }) => {
-      const card = this.create(child)
+      const card = this.create(child, true)
       const { columns, rows } = span(child, this._hass)
       card.style.gridColumn = `span ${columns}`
       card.toggleAttribute('data-sized', rows !== 'auto')
@@ -363,9 +412,10 @@ export class SidePanel extends HTMLElement {
     this.updateRoom()
   }
 
-  private create(config: CardConfig) {
+  private create(config: CardConfig, tile = false) {
     const card = document.createElement('hui-card') as HuiCard
-    if (this._hass) card.hass = this._hass
+    if (tile && typeof config.entity === 'string') card.dataset.entity = config.entity
+    if (this._hass) card.hass = tile ? this.tileHass(this._hass) : this._hass
     card.preview = this._preview
     // Older Home Assistant, such as 2024.6, builds the card in setConfig and
     // has no load, so the side panel came up empty there.

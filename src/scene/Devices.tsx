@@ -2,6 +2,7 @@ import { betweenOf, coverAt, coversOver, roomLookedFrom } from '#/decoration/bet
 import { decorationKind, type DecorationKind } from '#/decoration/catalog.ts'
 import { canTry, initialTry, tryItemState, type TryState, type TryStates } from '#/editor/tryState.ts'
 import { DOOR_KINDS } from '#/geometry/passages.ts'
+import { guardServices, inspectEntity, isReadOnly } from '#/lib/readOnly.ts'
 import DecorationModel from '#/scene/decor/DecorationModel.tsx'
 import type { DragAction } from '#/scene/decor/drag.tsx'
 import { grabs, type Grab } from '#/scene/drags.ts'
@@ -21,7 +22,7 @@ import {
 import { LIGHT_GLOW_COLOR } from '#/theme.ts'
 import type { CardConfig, DeviceConfig, HomeAssistant } from '#/types.ts'
 import { useThree } from '@react-three/fiber'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { Color, MathUtils, SRGBColorSpace, Vector3 } from 'three'
 
 type Props = {
@@ -173,6 +174,13 @@ export function deviceTry(hass: HomeAssistant, device: DeviceConfig, kind: Decor
 }
 
 export default function Devices({ hass, config, onPick, tries, onTry, roomFirst, onRoom }: Props) {
+  const observing = config.read_only === true || isReadOnly(hass)
+  const [access] = useState(() => new Map([['readOnly', observing]]))
+  const wasReadOnly = access.get('readOnly')
+  useLayoutEffect(() => {
+    access.set('readOnly', observing)
+  }, [access, observing])
+  const services = hass && guardServices(hass, () => access.get('readOnly') === true)
   const devices = config.devices ?? []
   const decorations = config.decorations ?? []
   const rooms = config.rooms ?? []
@@ -190,6 +198,14 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
   const [presses] = useState(() => new Map<string, Presses>())
   const [timers] = useState(() => new Map<string, ReturnType<typeof setTimeout>>())
   const [, redraw] = useState(0)
+  if (observing && !wasReadOnly) {
+    guesses.clear()
+    // Keep press counters monotonic, but no longer suppress real reports
+    // as acknowledgements of an optimistic click.
+    for (const press of presses.values()) press.until = 0
+    for (const timer of timers.values()) clearTimeout(timer)
+    timers.clear()
+  }
   useEffect(
     () => () => {
       for (const timer of timers.values()) clearTimeout(timer)
@@ -204,6 +220,7 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
   const gl = useThree(state => state.gl)
   const get = useThree(state => state.get)
   const openMoreInfo = (entityId: string) => {
+    if (access.get('readOnly') || isReadOnly(services)) return inspectEntity(gl.domElement, entityId)
     gl.domElement.dispatchEvent(
       new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }),
     )
@@ -212,7 +229,8 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
   // A device a click has nothing to switch on, like a camera or a
   // thermostat, opens its dialog instead.
   const act = (entityId: string) => {
-    if (!hass) return
+    if (!hass || !services) return
+    if (access.get('readOnly') || isReadOnly(services)) return inspectEntity(gl.domElement, entityId)
     const entity = hass.states[entityId]
     const action = clickAction(entityId, entity?.state, entity?.attributes)
     if (!action) return openMoreInfo(entityId)
@@ -236,9 +254,14 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
       )
       redraw(n => n + 1)
     }
-    // A call Home Assistant refuses must not surface as an unhandled
-    // rejection in the dashboard. Its own toast already says what went wrong.
-    hass.callService(action.domain, action.service, { entity_id: entityId }, undefined, false).catch(() => {})
+    void services.callService(action.domain, action.service, { entity_id: entityId }, undefined, false).catch(error => {
+      guesses.delete(entityId)
+      const timer = timers.get(entityId)
+      if (timer !== undefined) clearTimeout(timer)
+      timers.delete(entityId)
+      redraw(n => n + 1)
+      console.error(`Diorama: ${action.domain}.${action.service} was not confirmed`, error)
+    })
   }
 
   // What a press on each piece does. The models are only drawn again when
@@ -270,7 +293,7 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
   // A cover Home Assistant can send to any position, fed by that position,
   // can be dragged there. Not in the editor, which leaves the real one be.
   const draggable = (device: DeviceConfig | undefined) => {
-    if (!hass || !device || onTry || onPick || !device.entity_id.startsWith('cover.')) return false
+    if (!hass || !device || observing || onTry || onPick || !device.entity_id.startsWith('cover.')) return false
     const entity = hass.states[device.entity_id]
     if (!entity || entity.state === 'unavailable') return false
     const features = Number(entity.attributes.supported_features ?? 0)
@@ -290,7 +313,7 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
     // device, and one without shows its first look.
     const tried = onTry && kind && canTry(kind)
     const tryState = tried ? tries?.[item.id] : undefined
-    const real = device && hass ? itemState(hass, device, guesses, presses) : null
+    const real = device && hass ? itemState(hass, device, observing ? new Map() : guesses, presses) : null
     // What the device says that trying has no control for, like a reading,
     // is kept.
     const state = kind && tryState ? { ...real, ...tryItemState(kind, tryState) } : real
@@ -377,9 +400,11 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
         // left to turn the camera.
         const drag: DragAction | undefined = draggable(device)
           ? {
-              may: () => !roomFirst?.(roomOf(), true),
-              drop: level =>
-                hass!
+              may: () =>
+                !access.get('readOnly') && !isReadOnly(services) && draggable(device) && !roomFirst?.(roomOf(), true),
+              drop: level => {
+                if (access.get('readOnly') || isReadOnly(services) || !draggable(device)) return
+                void services!
                   .callService(
                     'cover',
                     'set_cover_position',
@@ -387,7 +412,8 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
                     undefined,
                     false,
                   )
-                  .catch(() => {}),
+                  .catch(error => console.error('Diorama: cover position was not confirmed', error))
+              },
             }
           : undefined
         // A drag on the window is a drag on the cover over where it landed,
@@ -396,7 +422,8 @@ export default function Devices({ hass, config, onPick, tries, onTry, roomFirst,
           covers.length > 0 && !leads
             ? (down, at) => {
                 const cover = coverAt(covers, [at.x, -at.z])
-                if (cover) grabs.get(cover.id)?.(down)
+                if (!access.get('readOnly') && !isReadOnly(services) && cover && draggable(boundTo.get(cover.id)))
+                  grabs.get(cover.id)?.(down)
               }
             : undefined
         actions.set(item.id, { click: onClick, open: onOpen, drag, pass })

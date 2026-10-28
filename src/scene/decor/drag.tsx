@@ -94,6 +94,10 @@ export function useDrag(travel: Travel | null, reported: number, text: string | 
   const gl = useThree(state => state.gl)
   const [dragged, setDragged] = useState<number | null>(null)
   const [sent, setSent] = useState<number | null>(null)
+  if (!action && (dragged !== null || sent !== null)) {
+    setDragged(null)
+    setSent(null)
+  }
   const moving = text === 'opening' || text === 'closing'
   // Where the cover really is, past the echo of where it was sent.
   const level = useUnechoed(reported, sent, moving, 0.015)
@@ -101,11 +105,15 @@ export function useDrag(travel: Travel | null, reported: number, text: string | 
   // the cover is when there is none.
   const latest = useRef(level)
   const arrived = sent !== null && Math.abs(level - sent) < 0.015
-  const pending = sent !== null && !arrived ? sent : null
+  const pending = action && sent !== null && !arrived ? sent : null
   useLayoutEffect(() => {
     latest.current = pending ?? level
   })
   const end = useRef<(() => void) | null>(null)
+  useLayoutEffect(() => {
+    if (action) return
+    end.current?.()
+  }, [action])
   // The pointer being followed. A press is handed to the piece once for each
   // of its parts under it, and only the first starts a drag.
   const following = useRef<number | null>(null)
@@ -162,6 +170,7 @@ export function useDrag(travel: Travel | null, reported: number, text: string | 
     }
     const onMove = (event: PointerEvent) => {
       if (event.pointerId !== id) return
+      if (!action.may()) return give()
       // A second finger makes it a pinch, and the camera's.
       if (multiTouchSince(at)) return give()
       const dx = event.clientX - sx
@@ -179,9 +188,10 @@ export function useDrag(travel: Travel | null, reported: number, text: string | 
     }
     const onUp = (event: PointerEvent) => {
       if (event.pointerId !== id) return
+      const allowed = action.may()
       const was = mine
       give()
-      if (!was) return
+      if (!was || !allowed) return
       dropped()
       if (event.type === 'pointercancel') return
       const to = levelAt(event.clientX, event.clientY)
@@ -201,7 +211,7 @@ export function useDrag(travel: Travel | null, reported: number, text: string | 
   return {
     frame,
     level,
-    dragged,
+    dragged: action ? dragged : null,
     // Where the cover was sent, until it gets there or stops short.
     sent: dragged === null ? pending : null,
     // Starts following a press, from the piece itself, from a press that

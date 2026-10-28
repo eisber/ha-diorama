@@ -10,7 +10,7 @@
     "watch": "vite build --watch",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-test-module-mocks --test tests/*.test.ts",
+    "test": "node --import ./tests/register.ts --experimental-test-module-mocks --test tests/*.test.ts",
     "showroom": "node scripts/showroom.ts",
     "demoflat": "node scripts/demoflat.ts",
     "release": "node scripts/release.ts"

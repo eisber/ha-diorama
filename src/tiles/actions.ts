@@ -1,4 +1,5 @@
 import type { EntityState, HomeAssistant } from '#/types.ts'
+import { inspectEntity, isReadOnly, readOnlyHost } from '#/lib/readOnly.ts'
 
 // What a tap or a hold on a tile does, in the format Home Assistant's own
 // cards use for tap_action and hold_action. `default` keeps the tile's own.
@@ -24,6 +25,7 @@ export function entityName(config: { name?: string; entity?: string }, entity: E
 
 export function moreInfo(host: HTMLElement, entityId: string | undefined) {
   if (!entityId) return
+  if (readOnlyHost(host)) return inspectEntity(host, entityId)
   host.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }))
 }
 
@@ -36,7 +38,13 @@ export function haptic(kind: 'light' | 'medium' | 'selection' = 'light') {
 // misses one press, like a TV still waking up, is no news to whoever pressed.
 export function callService(hass: HomeAssistant, action: string, data?: Record<string, unknown>) {
   const [domain, service] = action.split('.', 2)
-  return hass.callService(domain, service, data, undefined, false).catch(error => console.error(`Diorama tiles: ${action}`, error))
+  return hass.callService(domain, service, data, undefined, false).then(
+    () => true,
+    error => {
+      console.error(`Diorama tiles: ${action} was not sent or confirmed`, error)
+      return false
+    },
+  )
 }
 
 function navigate(path: string, replace = false) {
@@ -47,6 +55,11 @@ function navigate(path: string, replace = false) {
 
 // Runs an action from the config, or the tile's own when there is none.
 export function runAction(env: TileEnv, action: ActionConfig | undefined, fallback: () => void) {
+  if (
+    (isReadOnly(env.hass) || readOnlyHost(env.host)) &&
+    !['navigate', 'url', 'none'].includes(action?.action ?? 'default')
+  )
+    return inspectEntity(env.host, action?.entity ?? env.entityId)
   if (!action || action.action === 'default') return fallback()
   if (action.action === 'none') return
   if (action.confirmation) {

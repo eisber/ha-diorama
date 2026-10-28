@@ -253,5 +253,7 @@ export function autoGroups(plan: CardConfig): AutoGroup[] {
     )
     if (tiles.length) groups.push({ room: room.id, cards: [heading(room), ...tiles] })
   }
-  return groups
+  return plan.read_only === true
+    ? groups.map(group => ({ ...group, cards: group.cards.map(card => ({ ...card, read_only: true })) }))
+    : groups
 }

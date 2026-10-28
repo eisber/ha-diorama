@@ -1,6 +1,7 @@
 import { entityArea } from '#/devices/catalog.ts'
 import { injectProperties, ReactHost } from '#/host.tsx'
 import { onRoomFilter, roomFilter } from '#/lib/roomFilter.ts'
+import { CONTROL_EVENTS, guardServices, inspectEntity, isReadOnly } from '#/lib/readOnly.ts'
 import type { ActionConfig } from '#/tiles/actions.ts'
 import { isWide, tileRows } from '#/tiles/features/index.tsx'
 import tilesCss from '#/tiles/tiles.css?inline'
@@ -39,6 +40,7 @@ export type TileConfig = {
   tap_action?: ActionConfig
   hold_action?: ActionConfig
   haptic?: boolean
+  read_only?: boolean
   // Acts only on a second tap, so a stray one never does. Only buttons and
   // tiles that turn on and off read it.
   confirm?: boolean
@@ -134,14 +136,48 @@ export abstract class TileHost<C extends TileConfig> extends ReactHost<C> {
   private _preview = false
   private unsubscribe: (() => void) | null = null
   private pickerBox: ResizeObserver | null = null
+  private readOnlyNotice: HTMLDivElement
 
   constructor() {
     super()
     injectFonts()
     injectProperties(tilesCss, 'diorama-tiles-properties')
     const style = document.createElement('style')
-    style.textContent = tilesCss
+    style.textContent = `${tilesCss}\n:host { position: relative; }`
     this.shadowRoot!.appendChild(style)
+    this.readOnlyNotice = document.createElement('div')
+    this.readOnlyNotice.textContent = 'Read only'
+    this.readOnlyNotice.title = 'Device controls are disabled'
+    this.readOnlyNotice.style.cssText =
+      'position: absolute; top: 4px; right: 8px; z-index: 1; pointer-events: none; font: 10px sans-serif; padding: 2px 6px; border-radius: 8px; background: var(--ha-card-background, #1c1c1c); color: var(--primary-text-color, #fff)'
+    this.readOnlyNotice.hidden = true
+    this.shadowRoot!.appendChild(this.readOnlyNotice)
+    for (const type of CONTROL_EVENTS) this.addEventListener(type, this.blockControls, { capture: true })
+  }
+
+  get dioramaReadOnly() {
+    return this._config?.read_only === true || isReadOnly(this._hass)
+  }
+
+  private blockControls = (event: Event) => {
+    if (!this.dioramaReadOnly) return
+    if (event.type.startsWith('key') && ['Tab', 'Escape'].includes((event as KeyboardEvent).key)) return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    if (
+      event.type === 'click' ||
+      event.type === 'hass-more-info' ||
+      (event.type === 'keydown' && (event as KeyboardEvent).key === 'Enter')
+    )
+      inspectEntity(this, this._config?.entity)
+  }
+
+  private updateReadOnly() {
+    const readOnly = this.dioramaReadOnly
+    this.toggleAttribute('data-read-only', readOnly)
+    if (readOnly) this.setAttribute('aria-disabled', 'true')
+    else this.removeAttribute('aria-disabled')
+    this.readOnlyNotice.hidden = !readOnly || this.domains === null
   }
 
   setConfig(config: C) {
@@ -156,6 +192,7 @@ export abstract class TileHost<C extends TileConfig> extends ReactHost<C> {
     if (config.room_filter && !['hide', 'show', 'room', 'home'].includes(config.room_filter))
       throw new Error('room_filter must be hide, show, room or home')
     this._config = config
+    this.updateReadOnly()
     this.applyFilter()
     this.fitPicker()
     this.render()
@@ -185,7 +222,8 @@ export abstract class TileHost<C extends TileConfig> extends ReactHost<C> {
   }
 
   set hass(hass: HomeAssistant) {
-    this._hass = hass
+    this._hass = guardServices(hass, () => this._config?.read_only === true)
+    this.updateReadOnly()
     this.toggleAttribute('data-light', hass.themes?.darkMode === false)
     this.applyFilter()
     this.fitPicker()

@@ -197,6 +197,9 @@ export type CardConfig = {
   // room the device stands in while that room is not the one the camera has
   // flown to, so a device only answers from inside its room.
   first_click?: 'device' | 'room'
+  // Observe live devices without sending services or opening native controls.
+  // Editor trials and explicit review metadata saves are still available.
+  read_only?: boolean
   // Puts the diorama on two thirds of the width and a panel of tiles on
   // the rest: a heading per room, then a tile for each of its devices and
   // of its `entities`. On a narrow card the panel goes under the diorama.
