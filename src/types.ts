@@ -171,8 +171,13 @@ export type DecorationConfig = {
   variant?: string
 }
 
+export type Appearance = 'standard' | 'illustrated'
+
 export type CardConfig = {
   type: string
+  // Illustrated keeps a warm, readable model at night with matte surfaces
+  // and compact sensor bubbles. Omitted preserves the standard appearance.
+  appearance?: Appearance
   review?: ReviewConfig
   scan_reference?: { id: string }
   inspections?: Record<string, InspectionConfig>

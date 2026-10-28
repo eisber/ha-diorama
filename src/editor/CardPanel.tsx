@@ -322,6 +322,23 @@ export default function CardPanel({ hass, config, onChange, opening, onOpen }: P
         <div className={cn(group, 'gap-0 py-0')}>
           <label className="flex cursor-pointer items-center justify-between gap-4 py-2.5">
             <span className="flex min-w-0 flex-col">
+              <span className="text-[13px]">Illustrated appearance</span>
+              <span className="text-label-2 text-xs">
+                Warm, readable night lighting, matte surfaces and compact sensor bubbles
+              </span>
+            </span>
+            <Switch
+              checked={config.appearance === 'illustrated'}
+              accent={EDITOR_TINT_COLOR}
+              label="Illustrated appearance"
+              onChange={on => {
+                const { appearance: _, ...rest } = config
+                onChange(on ? { ...rest, appearance: 'illustrated' } : rest)
+              }}
+            />
+          </label>
+          <label className="flex cursor-pointer items-center justify-between gap-4 py-2.5">
+            <span className="flex min-w-0 flex-col">
               <span className="text-[13px]">Read only</span>
               <span className="text-label-2 text-xs">
                 Show live states without device controls. Navigation and editor trials still work

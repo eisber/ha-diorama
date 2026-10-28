@@ -84,6 +84,12 @@ const CSS = `
   height: calc(100dvh - var(--_reserved, calc(var(--header-height, 56px) + env(safe-area-inset-top, 0px))));
   padding: 0 24px 0 8px;
 }
+.split[data-illustrated] {
+  grid-template-columns: var(--_columns, minmax(0, 3fr) minmax(230px, 1fr));
+  --dio-title-size: 19px;
+  --dio-tile-radius: 28px;
+  --dio-tile-bg-inactive: rgba(139, 158, 158, 0.16);
+}
 .main {
   display: flex;
   flex-direction: column;
@@ -290,6 +296,7 @@ export class SidePanel extends HTMLElement {
   setConfig(config: PlanConfig) {
     if (config === this._config) return
     this._config = config
+    this.root.toggleAttribute('data-illustrated', config.appearance === 'illustrated')
     this.updateReadOnly()
     // Revoke services on existing tiles before the asynchronous rebuild.
     if (this._hass) for (const card of this.side) card.hass = this.tileHass(this._hass)

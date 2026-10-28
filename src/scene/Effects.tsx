@@ -5,6 +5,7 @@ import { EDITOR_SELECTED_COLOR } from '#/theme.ts'
 import { FOCUS_FADE_S } from '#/constants.ts'
 import { redrawShadows, showOnly } from '#/scene/focus.ts'
 import { setComposed } from '#/scene/warm.ts'
+import { AppearanceContext } from '#/scene/appearance.ts'
 import { useFrame, useThree } from '@react-three/fiber'
 import { N8AOPostPass } from 'n8ao'
 import {
@@ -18,7 +19,7 @@ import {
   ToneMappingEffect,
   ToneMappingMode,
 } from 'postprocessing'
-import { useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 import {
   Color,
   ConstantAlphaFactor,
@@ -99,6 +100,7 @@ type Pipeline = {
 }
 
 export default function Effects({ selected, focus = null }: Props) {
+  const appearance = useContext(AppearanceContext)
   const gl = useThree(state => state.gl)
   const scene = useThree(state => state.scene)
   const camera = useThree(state => state.camera)
@@ -124,7 +126,7 @@ export default function Effects({ selected, focus = null }: Props) {
     ao.configuration.halfRes = coarseOnly()
     ao.configuration.aoRadius = AO_RADIUS_M
     ao.configuration.distanceFalloff = AO_FALLOFF
-    ao.configuration.intensity = AO_INTENSITY
+    ao.configuration.intensity = appearance === 'illustrated' ? 1.1 : AO_INTENSITY
     composer.addPass(ao)
     let outline: OutlineEffect | null = null
     if (outlined) {
@@ -174,7 +176,7 @@ export default function Effects({ selected, focus = null }: Props) {
       // The composer disposes of its passes, and they of their effects.
       composer.dispose()
     }
-  }, [gl, scene, camera, outlined])
+  }, [gl, scene, camera, outlined, appearance])
 
   useEffect(() => {
     // The composer sizes its buffers from the canvas, which follows the

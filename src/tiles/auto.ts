@@ -253,7 +253,18 @@ export function autoGroups(plan: CardConfig): AutoGroup[] {
     )
     if (tiles.length) groups.push({ room: room.id, cards: [heading(room), ...tiles] })
   }
-  return plan.read_only === true
-    ? groups.map(group => ({ ...group, cards: group.cards.map(card => ({ ...card, read_only: true })) }))
-    : groups
+  return groups.map(group => ({
+    ...group,
+    cards: group.cards.map(card => ({
+      ...card,
+      ...(plan.appearance === 'illustrated' &&
+      card.type === 'custom:dio-entity' &&
+      !card.feature &&
+      !card.size &&
+      !card.grid_options
+        ? { layout: 'bubble', grid_options: { columns: 12, rows: 1 } }
+        : {}),
+      ...(plan.read_only === true ? { read_only: true } : {}),
+    })),
+  }))
 }

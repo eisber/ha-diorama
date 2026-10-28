@@ -41,6 +41,7 @@ export type TileConfig = {
   hold_action?: ActionConfig
   haptic?: boolean
   read_only?: boolean
+  layout?: 'bubble'
   // Acts only on a second tap, so a stray one never does. Only buttons and
   // tiles that turn on and off read it.
   confirm?: boolean
@@ -192,6 +193,7 @@ export abstract class TileHost<C extends TileConfig> extends ReactHost<C> {
     if (config.room_filter && !['hide', 'show', 'room', 'home'].includes(config.room_filter))
       throw new Error('room_filter must be hide, show, room or home')
     this._config = config
+    this.toggleAttribute('data-bubble', config.layout === 'bubble' && !config.feature)
     this.updateReadOnly()
     this.applyFilter()
     this.fitPicker()

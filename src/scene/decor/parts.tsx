@@ -2,10 +2,11 @@ import { roundedShape } from '#/geometry/polygon.ts'
 import { surfaceRoughness, type SurfaceKind } from '#/materials/textures.ts'
 import { useEased } from '#/scene/decor/ease.ts'
 import { useWarmed } from '#/scene/warm.ts'
+import { AppearanceContext } from '#/scene/appearance.ts'
 import { useFrame } from '@react-three/fiber'
 import { shadowless, useLive } from '#/scene/live.ts'
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { useMemo, useRef, type ReactNode } from 'react'
+import { useContext, useMemo, useRef, type ReactNode } from 'react'
 import {
   CanvasTexture,
   CatmullRomCurve3,
@@ -79,7 +80,8 @@ export function Material({
   // Plain paint. Decorations carry no pattern: the surface only decides how
   // matte or how polished the part is, and the color does the rest. Floors
   // are the only thing in the room with a texture on it.
-  const roughness = surfaceRoughness(material as SurfaceKind)
+  const illustrated = useContext(AppearanceContext) === 'illustrated'
+  const roughness = Math.max(illustrated ? 0.85 : 0, surfaceRoughness(material as SurfaceKind))
   if (opacity >= 1 && emissiveIntensity === 0)
     return <primitive object={sharedMaterial(color, roughness, doubleSide)} attach="material" dispose={null} />
   return (

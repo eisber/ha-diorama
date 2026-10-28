@@ -128,6 +128,37 @@
   color: var(--_text-active);
 }
 
+:host([data-bubble]) .dio-tile {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px;
+  border-radius: var(--dio-tile-radius, 28px);
+}
+
+:host([data-bubble]) .dio-top {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+:host([data-bubble]) .dio-tile > .dio-text {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+:host([data-bubble]) .dio-name {
+  padding-right: 42px;
+  font-size: 12px;
+}
+
+:host([data-bubble]) .dio-state {
+  font-size: 15px;
+  font-weight: 600;
+}
+
 /* A button lights up at once when pressed and a moment later fades slowly
    back to off. */
 .dio-tile[data-fading] {

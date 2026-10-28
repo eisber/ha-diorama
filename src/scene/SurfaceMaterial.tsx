@@ -1,5 +1,6 @@
 import { surface, type SurfaceKind } from '#/materials/textures.ts'
-import { useEffect, useMemo } from 'react'
+import { AppearanceContext } from '#/scene/appearance.ts'
+import { useContext, useEffect, useMemo } from 'react'
 import { DoubleSide, Matrix3, Vector2 } from 'three'
 
 type Props = {
@@ -42,7 +43,8 @@ export default function SurfaceMaterial({
   relief = true,
   doubleSide = false,
 }: Props) {
-  const s = surface(kind, intensity)
+  const illustrated = useContext(AppearanceContext) === 'illustrated'
+  const s = surface(kind, illustrated ? intensity * 0.18 : intensity)
   const maps = useMemo(() => {
     const map = s.map.clone()
     const normalMap = s.normalMap.clone()
@@ -85,9 +87,9 @@ export default function SurfaceMaterial({
     <meshStandardMaterial
       color={color}
       map={maps.map}
-      normalMap={relief ? maps.normalMap : null}
+      normalMap={relief && !illustrated ? maps.normalMap : null}
       normalScale={normalScale}
-      roughness={s.roughness}
+      roughness={illustrated ? Math.max(0.85, s.roughness) : s.roughness}
       side={doubleSide ? DoubleSide : undefined}
       emissive={emissive ?? [0, 0, 0]}
       emissiveIntensity={emissiveIntensity}

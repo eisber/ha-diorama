@@ -18,6 +18,7 @@ moves that section under the new version and uses it as the release notes.
 - Surface-anchored review conversations and guided physical measurements keep feedback beside the model without changing its dimensions.
 - Read-only inspections can show related histories, verified host observations, live camera images and a recording timeline.
 - Sensor-only observation bindings can illustrate an estimated opening, and walls can be drawn at full room height.
+- An optional Illustrated appearance keeps the model warm and readable at night, softens floor textures and groups sensor values into compact bubbles.
 
 ### Changed
 

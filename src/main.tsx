@@ -141,6 +141,8 @@ function renameTiles(tiles: TileChoices): TileChoices {
 }
 
 function validate(config: CardConfig) {
+  if (config.appearance !== undefined && !['standard', 'illustrated'].includes(config.appearance))
+    throw new Error('appearance must be standard or illustrated')
   if (config.read_only !== undefined && typeof config.read_only !== 'boolean')
     throw new Error('read_only must be a boolean')
   if (
