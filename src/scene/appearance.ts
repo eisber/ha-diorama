@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { Appearance } from '#/types.ts'
+import type { Appearance, Lighting } from '#/types.ts'
 import {
   DAY_AMBIENT_INTENSITY,
   DAY_HEMISPHERE_INTENSITY,
@@ -13,9 +13,13 @@ import {
 
 export const AppearanceContext = createContext<Appearance>('standard')
 
-export function lightingFor(appearance: Appearance, day: number, backdrop: number) {
+export function lightingOf(appearance: Appearance, lighting?: Lighting): Lighting {
+  return lighting ?? (appearance === 'illustrated' ? 'bright' : 'natural')
+}
+
+export function lightingFor(appearance: Appearance, day: number, backdrop: number, lighting?: Lighting) {
   const between = (night: number, light: number) => night + (light - night) * day
-  if (appearance === 'illustrated')
+  if (lightingOf(appearance, lighting) === 'bright')
     return {
       ambient: between(0.8, 0.92),
       hemisphere: between(1.55, 1.75),

@@ -172,12 +172,15 @@ export type DecorationConfig = {
 }
 
 export type Appearance = 'standard' | 'illustrated'
+export type Lighting = 'natural' | 'bright'
 
 export type CardConfig = {
   type: string
   // Illustrated keeps a warm, readable model at night with matte surfaces
   // and compact sensor bubbles. Omitted preserves the standard appearance.
   appearance?: Appearance
+  // Override the appearance's light without changing surfaces or layout.
+  lighting?: Lighting
   review?: ReviewConfig
   scan_reference?: { id: string }
   inspections?: Record<string, InspectionConfig>

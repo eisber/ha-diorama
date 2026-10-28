@@ -9,6 +9,7 @@ import ControlsGuide from '#/editor/ControlsGuide.tsx'
 import { ResetButton, Slider, Switch } from '#/editor/panel.tsx'
 import { SUN_DIRECTION_DEG } from '#/constants.ts'
 import { EDITOR_TINT_COLOR } from '#/theme.ts'
+import { lightingOf } from '#/scene/appearance.ts'
 import { entityName } from '#/devices/catalog.ts'
 import type { BackgroundConfig, CardConfig, HomeAssistant, HomeConfig, RoomConfig, TileChoice, TileChoices } from '#/types.ts'
 import { autoTiles, choicesOf, keyEntity, panelRooms, panelWidgets, type AutoCard, type PanelWidget } from '#/tiles/auto.ts'
@@ -324,7 +325,7 @@ export default function CardPanel({ hass, config, onChange, opening, onOpen }: P
             <span className="flex min-w-0 flex-col">
               <span className="text-[13px]">Illustrated appearance</span>
               <span className="text-label-2 text-xs">
-                Warm, readable night lighting, matte surfaces and compact sensor bubbles
+                Matte surfaces, softer floor textures and compact sensor bubbles
               </span>
             </span>
             <Switch
@@ -335,6 +336,28 @@ export default function CardPanel({ hass, config, onChange, opening, onOpen }: P
                 const { appearance: _, ...rest } = config
                 onChange(on ? { ...rest, appearance: 'illustrated' } : rest)
               }}
+            />
+          </label>
+          <label className="flex cursor-pointer items-center justify-between gap-4 py-2.5">
+            <span className="flex min-w-0 flex-col">
+              <span className="text-[13px]">Bright illustration lighting</span>
+              <span className="text-label-2 text-xs">
+                Off follows natural daylight and cosy, dim night lighting. Surfaces and widgets stay unchanged
+              </span>
+            </span>
+            <ResetButton
+              label="Lighting"
+              changed={config.lighting !== undefined}
+              onReset={() => {
+                const { lighting: _, ...rest } = config
+                onChange(rest)
+              }}
+            />
+            <Switch
+              checked={lightingOf(config.appearance ?? 'standard', config.lighting) === 'bright'}
+              accent={EDITOR_TINT_COLOR}
+              label="Bright illustration lighting"
+              onChange={on => onChange({ ...config, lighting: on ? 'bright' : 'natural' })}
             />
           </label>
           <label className="flex cursor-pointer items-center justify-between gap-4 py-2.5">

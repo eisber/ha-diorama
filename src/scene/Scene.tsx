@@ -145,7 +145,7 @@ export default function Scene({
         }
       >
         <AppearanceContext.Provider value={config.appearance ?? 'standard'}>
-          <Sky hass={hass} rooms={rooms} mode={sky} direction={config.sun_direction} />
+          <Sky hass={hass} rooms={rooms} mode={sky} direction={config.sun_direction} lighting={config.lighting} />
           {/* Everything solid casts and receives, so a lamp throws the things
           around it onto the floor. */}
           <Shadows />

@@ -8,7 +8,7 @@ import {
 import { backdropLightness } from '#/scene/backdrop.ts'
 import { daylight, sunElevation } from '#/scene/daylight.ts'
 import { planBounds } from '#/scene/framing.ts'
-import { AppearanceContext, lightingFor } from '#/scene/appearance.ts'
+import { AppearanceContext, lightingFor, lightingOf } from '#/scene/appearance.ts'
 import {
   DAY_AMBIENT_INTENSITY,
   DAY_GROUND_COLOR,
@@ -24,7 +24,7 @@ import {
   NIGHT_SUN_COLOR,
 } from '#/theme.ts'
 import { lean as isLean, useDevSettings } from '#/lib/devSettings.ts'
-import type { HomeAssistant, RoomConfig } from '#/types.ts'
+import type { HomeAssistant, Lighting, RoomConfig } from '#/types.ts'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { Color, MathUtils, Object3D, type AmbientLight, type DirectionalLight, type HemisphereLight } from 'three'
@@ -42,15 +42,17 @@ export default function Sky({
   rooms = [],
   mode = 'auto',
   direction = SUN_DIRECTION_DEG,
+  lighting,
 }: {
   hass: HomeAssistant | null
   rooms?: RoomConfig[]
   mode?: SkyMode
   // Compass bearing the sun comes from, clockwise from the top of the plan.
   direction?: number
+  lighting?: Lighting
 }) {
   const appearance = useContext(AppearanceContext)
-  const illustrated = appearance === 'illustrated'
+  const bright = lightingOf(appearance, lighting) === 'bright'
   const lean = isLean(useDevSettings())
   const target = daylight(sunElevation(hass, mode === 'auto' ? undefined : mode))
   const level = useRef(target.level)
@@ -115,7 +117,7 @@ export default function Sky({
   useEffect(() => {
     settled.current = false
     invalidate()
-  }, [backdrop, appearance, invalidate])
+  }, [backdrop, appearance, lighting, invalidate])
 
   useFrame((_, delta) => {
     // Once the light has arrived it is left alone until the sun moves.
@@ -130,23 +132,23 @@ export default function Sky({
     level.current += (target.level - level.current) * k
     height.current += (target.height - height.current) * k
     lift.current += (backdrop - lift.current) * k
-    const lighting = lightingFor(appearance, level.current, lift.current)
-    const day = illustrated ? 0.8 + level.current * 0.2 : level.current
-    const up = illustrated ? 0.7 + height.current * 0.3 : height.current
+    const illumination = lightingFor(appearance, level.current, lift.current, lighting)
+    const day = bright ? 0.8 + level.current * 0.2 : level.current
+    const up = bright ? 0.7 + height.current * 0.3 : height.current
     // Golden along the horizon, near white overhead, then faded toward the
     // night wash as the sun goes down.
     const tint = (set: Color[]) => colors.mix.lerpColors(set[0], colors.lit.lerpColors(set[1], set[2], up), day)
     if (ambient.current) {
-      ambient.current.intensity = lighting.ambient
+      ambient.current.intensity = illumination.ambient
       ambient.current.color.copy(tint(colors.sky))
     }
     if (hemi.current) {
-      hemi.current.intensity = lighting.hemisphere
+      hemi.current.intensity = illumination.hemisphere
       hemi.current.color.copy(tint(colors.sky))
       hemi.current.groundColor.copy(tint(colors.ground))
     }
     if (sun.current) {
-      sun.current.intensity = lighting.sun
+      sun.current.intensity = illumination.sun
       sun.current.color.copy(tint(colors.sun))
     }
   })

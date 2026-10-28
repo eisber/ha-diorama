@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { lightingFor } from '../src/scene/appearance.ts'
+import { lightingFor, lightingOf } from '../src/scene/appearance.ts'
 import { autoGroups } from '../src/tiles/auto.ts'
 import type { CardConfig } from '../src/types.ts'
 
@@ -49,4 +49,21 @@ test('illustrated sensor bubbles preserve chosen controls, explicit sizes and re
       .flatMap(group => group.cards)
       .every(card => card.layout === undefined),
   )
+})
+
+test('natural lighting restores the original day and night wash without removing illustrated surfaces or bubbles', () => {
+  for (const day of [0, 0.25, 0.5, 1]) {
+    for (const backdrop of [0, 0.5, 1]) {
+      assert.deepEqual(lightingFor('illustrated', day, backdrop, 'natural'), lightingFor('standard', day, backdrop))
+      assert.deepEqual(lightingFor('standard', day, backdrop, 'bright'), lightingFor('illustrated', day, backdrop))
+    }
+  }
+  assert.equal(lightingOf('illustrated', 'natural'), 'natural')
+  const config: CardConfig = {
+    type: 'custom:diorama-card',
+    appearance: 'illustrated',
+    lighting: 'natural',
+    home: { entities: ['sensor.temperature'] },
+  }
+  assert.equal(autoGroups(config)[0].cards.find(card => card.entity === 'sensor.temperature')?.layout, 'bubble')
 })
